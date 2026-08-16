@@ -1,0 +1,358 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kigali LULC Results Dashboard</title>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0b1220; --bg2:#0f1b30; --card:#ffffff; --card-border:#e6e9ef;
+    --text:#0f172a; --muted:#5b6472; --accent:#E60000; --accent2:#007300;
+    --accent3:#FFB000; --accent4:#2E6FBE; --page:#f4f6fb;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:'Inter',Arial,sans-serif;background:var(--page);color:var(--text);}
+  .hero{
+    background:linear-gradient(135deg,#0b1220 0%,#122544 55%,#1a3a63 100%);
+    color:#fff;padding:64px 24px 90px;position:relative;overflow:hidden;
+  }
+  .hero::before{
+    content:"";position:absolute;inset:0;
+    background:radial-gradient(circle at 20% 20%, rgba(230,0,0,0.18), transparent 40%),
+               radial-gradient(circle at 80% 30%, rgba(0,115,0,0.20), transparent 45%),
+               radial-gradient(circle at 50% 90%, rgba(46,111,190,0.25), transparent 50%);
+    animation:drift 14s ease-in-out infinite alternate;
+  }
+  @keyframes drift{from{transform:scale(1) translateY(0);}to{transform:scale(1.08) translateY(-10px);}}
+  .hero-inner{max-width:1180px;margin:0 auto;position:relative;z-index:2;}
+  .eyebrow{font-size:13px;letter-spacing:2.5px;text-transform:uppercase;color:#9fb4d8;font-weight:600;}
+  .hero h1{font-size:40px;font-weight:800;margin:10px 0 8px;letter-spacing:-0.5px;}
+  .hero p{font-size:16px;color:#c3cfe6;max-width:680px;line-height:1.6;margin:0 0 30px;}
+  .kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px;margin-top:10px;}
+  .kpi{
+    background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.14);
+    border-radius:16px;padding:20px 22px;backdrop-filter:blur(6px);
+    transition:transform .3s ease, background .3s ease;
+  }
+  .kpi:hover{transform:translateY(-4px);background:rgba(255,255,255,0.1);}
+  .kpi .label{font-size:12.5px;color:#a9b8d4;text-transform:uppercase;letter-spacing:1px;font-weight:600;}
+  .kpi .value{font-size:32px;font-weight:800;margin-top:6px;font-variant-numeric:tabular-nums;}
+  .kpi .sub{font-size:12.5px;color:#8fa1c4;margin-top:4px;}
+
+  .wrap{max-width:1180px;margin:-48px auto 60px;padding:0 24px;}
+  section.card{
+    background:var(--card);border:1px solid var(--card-border);border-radius:18px;
+    padding:28px 28px 20px;margin-bottom:26px;box-shadow:0 10px 30px rgba(15,23,42,0.05);
+    opacity:0;transform:translateY(24px);transition:opacity .7s ease, transform .7s ease;
+  }
+  section.card.in-view{opacity:1;transform:translateY(0);}
+  .section-title{font-size:20px;font-weight:800;margin:0 0 4px;}
+  .section-desc{font-size:13.5px;color:var(--muted);margin:0 0 18px;max-width:760px;line-height:1.55;}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+  @media (max-width:860px){.grid2{grid-template-columns:1fr;}}
+  .chart{width:100%;min-height:340px;}
+  .chart.tall{min-height:420px;}
+  table.stat-table{width:100%;border-collapse:collapse;font-size:13px;margin-top:6px;}
+  table.stat-table th{
+    text-align:left;background:#f1f4fa;color:#334155;font-weight:700;
+    padding:9px 10px;border-bottom:2px solid #e2e8f0;
+  }
+  table.stat-table td{padding:8px 10px;border-bottom:1px solid #eef1f6;color:#334155;}
+  table.stat-table tr:hover td{background:#fafbfe;}
+  .badge{display:inline-block;padding:2px 9px;border-radius:999px;font-size:11.5px;font-weight:700;}
+  .badge.high{background:#fde2e2;color:#a11313;}
+  .badge.med{background:#fff1d6;color:#9a6400;}
+  .badge.low{background:#e2f3e2;color:#1a6b1a;}
+  footer{text-align:center;color:var(--muted);font-size:12.5px;padding:30px 20px 50px;}
+  footer a{color:var(--accent4);text-decoration:none;font-weight:600;}
+  .top-nav{position:sticky;top:0;z-index:50;background:rgba(11,18,32,0.92);backdrop-filter:blur(8px);
+    padding:12px 24px;display:flex;justify-content:space-between;align-items:center;}
+  .top-nav a{color:#dbe4f5;text-decoration:none;font-size:13.5px;font-weight:600;margin-left:18px;}
+  .top-nav a:hover{color:#fff;}
+  .top-nav .brand{color:#fff;font-weight:800;font-size:14.5px;letter-spacing:0.3px;}
+</style>
+</head>
+<body>
+
+<div class="top-nav">
+  <span class="brand">KIGALI LULC &middot; 2004&ndash;2035</span>
+  <div>
+    <a href="index.html">Overview</a>
+    <a href="kigali_interactive_map.html">Interactive Map</a>
+  </div>
+</div>
+
+<div class="hero">
+  <div class="hero-inner">
+    <div class="eyebrow">Machine Learning &middot; Random Forest &middot; CA-Markov</div>
+    <h1>Land Use and Land Cover Change Results</h1>
+    <p>Twenty years of classified satellite imagery (2004&ndash;2024) plus a Cellular Automata&ndash;Markov
+       projection to 2035, covering Kigali City's three districts: Gasabo, Kicukiro, and Nyarugenge.</p>
+    <div class="kpi-row" id="kpi-row"></div>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <section class="card" id="sec-accuracy">
+    <div class="section-title">Classification Accuracy Assessment</div>
+    <p class="section-desc">Overall Accuracy and Kappa Coefficient for each independently classified reference year.</p>
+    <div id="chart-accuracy" class="chart"></div>
+  </section>
+
+  <section class="card" id="sec-trends">
+    <div class="section-title">LULC Area Trends, 2004&ndash;2035</div>
+    <p class="section-desc">Solid lines are independently classified years (2004&ndash;2024). The dashed segment (2024&rarr;2035) is the CA-Markov projection.</p>
+    <div id="chart-trends" class="chart tall"></div>
+  </section>
+
+  <section class="card" id="sec-periods">
+    <div class="section-title">Urban Expansion &amp; Agricultural Land Loss by Period</div>
+    <p class="section-desc">Net change in Built-up Area and Agricultural Land for each five-year interval.</p>
+    <div class="grid2">
+      <div id="chart-urban-period" class="chart"></div>
+      <div id="chart-agri-period" class="chart"></div>
+    </div>
+  </section>
+
+  <section class="card" id="sec-transition">
+    <div class="section-title">Land Transition Matrix, 2004&ndash;2024</div>
+    <p class="section-desc">Hectares transitioning from each class (rows) to each class (columns) over the full study period.</p>
+    <div id="chart-transition" class="chart tall"></div>
+  </section>
+
+  <section class="card" id="sec-hotspot">
+    <div class="section-title">Agricultural-to-Built-up Conversion Hotspots</div>
+    <p class="section-desc">Kernel-density hotspot classification of direct 2004&ndash;2024 Agriculture-to-Built-up conversion.</p>
+    <div class="grid2">
+      <div id="chart-hotspot" class="chart"></div>
+      <div id="hotspot-zone-table"></div>
+    </div>
+  </section>
+
+  <section class="card" id="sec-distance">
+    <div class="section-title">Conversion by Distance</div>
+    <p class="section-desc">Agricultural-to-Built-up conversion rate as a function of distance from major roads and from the urban center.</p>
+    <div class="grid2">
+      <div id="chart-dist-roads" class="chart"></div>
+      <div id="chart-dist-center" class="chart"></div>
+    </div>
+  </section>
+
+  <section class="card" id="sec-2035">
+    <div class="section-title">2035 Projection</div>
+    <p class="section-desc">CA-Markov simulated land use distribution for 2035 compared against the observed 2024 baseline.</p>
+    <div id="chart-2035" class="chart"></div>
+  </section>
+
+  <section class="card" id="sec-drivers">
+    <div class="section-title">Urban Expansion Driving Factors</div>
+    <p class="section-desc">Random Forest feature importance and Variance Inflation Factor (VIF) multicollinearity check among the driving factors used in the 2035 model.</p>
+    <div class="grid2">
+      <div id="chart-importance" class="chart"></div>
+      <div id="chart-vif" class="chart"></div>
+    </div>
+  </section>
+
+</div>
+
+<footer>
+  Kigali City LULC Classification &amp; Change Detection, 2004&ndash;2035 &middot;
+  Random Forest classification, CA-Markov projection &middot;
+  <a href="index.html">Back to overview</a>
+</footer>
+
+<script>
+const STATS = {"accuracy_summary": [{"Year": 2004, "Overall Accuracy (%)": 70.09, "Kappa": 0.6261, "OA >= 85%": "NO", "Kappa >= 0.75": "NO"}, {"Year": 2009, "Overall Accuracy (%)": 62.44, "Kappa": 0.5306, "OA >= 85%": "NO", "Kappa >= 0.75": "NO"}, {"Year": 2014, "Overall Accuracy (%)": 70.78, "Kappa": 0.6283, "OA >= 85%": "NO", "Kappa >= 0.75": "NO"}, {"Year": 2019, "Overall Accuracy (%)": 76.22, "Kappa": 0.7028, "OA >= 85%": "NO", "Kappa >= 0.75": "NO"}, {"Year": 2024, "Overall Accuracy (%)": 80.62, "Kappa": 0.7578, "OA >= 85%": "NO", "Kappa >= 0.75": "YES"}], "area_by_year": [{"class": "Built-up Areas", "2004": 12478.7, "2009": 16139.3, "2014": 22216.0, "2019": 25642.7, "2024": 29612.0}, {"class": "Wetlands & Water Bodies", "2004": 4802.2, "2009": 6944.4, "2014": 5170.6, "2019": 4092.9, "2024": 4018.9}, {"class": "Forest & Natural Vegetation", "2004": 21894.3, "2009": 18302.9, "2014": 11815.4, "2019": 13066.9, "2024": 9714.5}, {"class": "Agricultural Land", "2004": 30987.0, "2009": 28241.0, "2014": 25483.0, "2019": 23172.0, "2024": 21083.0}, {"class": "Bare Land", "2004": 2824.0, "2009": 3359.0, "2014": 8301.0, "2019": 7011.0, "2024": 8558.0}], "transition_matrices": {"2004_2009": [{"From(2004)\\To(2009)": "Built-up Areas", "Built-up Areas": 23400.7, "Wetlands & Water Bodies": 0.0, "Forest & Natural Vegetation": 0.0, "Agricultural Land": 0.0, "Bare Land": 0.0, "TOTAL_from": 23400.7}, {"From(2004)\\To(2009)": "Wetlands & Water Bodies", "Built-up Areas": 167.4, "Wetlands & Water Bodies": 560.0, "Forest & Natural Vegetation": 1352.0, "Agricultural Land": 495.7, "Bare Land": 7.3, "TOTAL_from": 2582.4}, {"From(2004)\\To(2009)": "Forest & Natural Vegetation", "Built-up Areas": 2682.0, "Wetlands & Water Bodies": 3159.6, "Forest & Natural Vegetation": 9088.0, "Agricultural Land": 5868.1, "Bare Land": 120.9, "TOTAL_from": 20918.6}, {"From(2004)\\To(2009)": "Agricultural Land", "Built-up Areas": 1076.2, "Wetlands & Water Bodies": 3204.4, "Forest & Natural Vegetation": 14052.9, "Agricultural Land": 4277.4, "Bare Land": 96.2, "TOTAL_from": 22707.1}, {"From(2004)\\To(2009)": "Bare Land", "Built-up Areas": 62.9, "Wetlands & Water Bodies": 7.9, "Forest & Natural Vegetation": 84.1, "Agricultural Land": 35.5, "Bare Land": 0.1, "TOTAL_from": 190.5}, {"From(2004)\\To(2009)": "TOTAL_to", "Built-up Areas": 27389.2, "Wetlands & Water Bodies": 6931.9, "Forest & Natural Vegetation": 24577.0, "Agricultural Land": 10676.7, "Bare Land": 224.5, "TOTAL_from": 69799.3}], "2009_2014": [{"From(2009)\\To(2014)": "Built-up Areas", "Built-up Areas": 27477.8, "Wetlands & Water Bodies": 0.0, "Forest & Natural Vegetation": 0.0, "Agricultural Land": 0.0, "Bare Land": 0.0, "TOTAL_from": 27477.8}, {"From(2009)\\To(2014)": "Wetlands & Water Bodies", "Built-up Areas": 173.1, "Wetlands & Water Bodies": 1752.8, "Forest & Natural Vegetation": 2108.5, "Agricultural Land": 2957.4, "Bare Land": 2.3, "TOTAL_from": 6994.1}, {"From(2009)\\To(2014)": "Forest & Natural Vegetation", "Built-up Areas": 1493.8, "Wetlands & Water Bodies": 667.1, "Forest & Natural Vegetation": 10070.5, "Agricultural Land": 13082.7, "Bare Land": 55.6, "TOTAL_from": 25369.7}, {"From(2009)\\To(2014)": "Agricultural Land", "Built-up Areas": 968.6, "Wetlands & Water Bodies": 758.7, "Forest & Natural Vegetation": 2084.1, "Agricultural Land": 6965.8, "Bare Land": 23.5, "TOTAL_from": 10800.7}, {"From(2009)\\To(2014)": "Bare Land", "Built-up Areas": 6.7, "Wetlands & Water Bodies": 13.1, "Forest & Natural Vegetation": 57.8, "Agricultural Land": 153.6, "Bare Land": 0.0, "TOTAL_from": 231.2}, {"From(2009)\\To(2014)": "TOTAL_to", "Built-up Areas": 30120.0, "Wetlands & Water Bodies": 3191.7, "Forest & Natural Vegetation": 14320.9, "Agricultural Land": 23159.5, "Bare Land": 81.4, "TOTAL_from": 70873.5}], "2014_2019": [{"From(2014)\\To(2019)": "Built-up Areas", "Built-up Areas": 30190.5, "Wetlands & Water Bodies": 0.0, "Forest & Natural Vegetation": 0.0, "Agricultural Land": 0.0, "Bare Land": 0.0, "TOTAL_from": 30190.5}, {"From(2014)\\To(2019)": "Wetlands & Water Bodies", "Built-up Areas": 758.2, "Wetlands & Water Bodies": 1428.5, "Forest & Natural Vegetation": 1012.2, "Agricultural Land": 27.7, "Bare Land": 0.5, "TOTAL_from": 3227.1}, {"From(2014)\\To(2019)": "Forest & Natural Vegetation", "Built-up Areas": 7234.4, "Wetlands & Water Bodies": 1182.1, "Forest & Natural Vegetation": 4544.9, "Agricultural Land": 1453.8, "Bare Land": 9.8, "TOTAL_from": 14425.0}, {"From(2014)\\To(2019)": "Agricultural Land", "Built-up Areas": 15263.1, "Wetlands & Water Bodies": 955.8, "Forest & Natural Vegetation": 3679.2, "Agricultural Land": 3525.4, "Bare Land": 58.3, "TOTAL_from": 23481.8}, {"From(2014)\\To(2019)": "Bare Land", "Built-up Areas": 66.1, "Wetlands & Water Bodies": 1.1, "Forest & Natural Vegetation": 5.5, "Agricultural Land": 8.5, "Bare Land": 0.2, "TOTAL_from": 81.4}, {"From(2014)\\To(2019)": "TOTAL_to", "Built-up Areas": 53512.3, "Wetlands & Water Bodies": 3567.5, "Forest & Natural Vegetation": 9241.8, "Agricultural Land": 5015.4, "Bare Land": 68.8, "TOTAL_from": 71405.8}], "2019_2024": [{"From(2019)\\To(2024)": "Built-up Areas", "Built-up Areas": 53832.5, "Wetlands & Water Bodies": 0.0, "Forest & Natural Vegetation": 0.0, "Agricultural Land": 0.0, "Bare Land": 0.0, "TOTAL_from": 53832.5}, {"From(2019)\\To(2024)": "Wetlands & Water Bodies", "Built-up Areas": 726.0, "Wetlands & Water Bodies": 2207.7, "Forest & Natural Vegetation": 329.0, "Agricultural Land": 405.8, "Bare Land": 10.6, "TOTAL_from": 3679.1}, {"From(2019)\\To(2024)": "Forest & Natural Vegetation", "Built-up Areas": 3252.5, "Wetlands & Water Bodies": 1071.7, "Forest & Natural Vegetation": 4052.0, "Agricultural Land": 914.3, "Bare Land": 31.4, "TOTAL_from": 9321.9}, {"From(2019)\\To(2024)": "Agricultural Land", "Built-up Areas": 2281.0, "Wetlands & Water Bodies": 62.1, "Forest & Natural Vegetation": 100.5, "Agricultural Land": 2452.5, "Bare Land": 117.7, "TOTAL_from": 5013.8}, {"From(2019)\\To(2024)": "Bare Land", "Built-up Areas": 31.5, "Wetlands & Water Bodies": 0.7, "Forest & Natural Vegetation": 1.3, "Agricultural Land": 4.9, "Bare Land": 32.1, "TOTAL_from": 70.5}, {"From(2019)\\To(2024)": "TOTAL_to", "Built-up Areas": 60123.5, "Wetlands & Water Bodies": 3342.2, "Forest & Natural Vegetation": 4482.8, "Agricultural Land": 3777.5, "Bare Land": 191.8, "TOTAL_from": 71917.8}], "2004_2024": [{"From(2004)\\To(2024)": "Built-up Areas", "Built-up Areas": 23400.7, "Wetlands & Water Bodies": 0.0, "Forest & Natural Vegetation": 0.0, "Agricultural Land": 0.0, "Bare Land": 0.0, "TOTAL_from": 23400.7}, {"From(2004)\\To(2024)": "Wetlands & Water Bodies", "Built-up Areas": 1716.7, "Wetlands & Water Bodies": 385.3, "Forest & Natural Vegetation": 236.1, "Agricultural Land": 224.1, "Bare Land": 15.1, "TOTAL_from": 2577.3}, {"From(2004)\\To(2024)": "Forest & Natural Vegetation", "Built-up Areas": 16653.1, "Wetlands & Water Bodies": 1232.4, "Forest & Natural Vegetation": 2222.7, "Agricultural Land": 1062.2, "Bare Land": 63.2, "TOTAL_from": 21233.6}, {"From(2004)\\To(2024)": "Agricultural Land", "Built-up Areas": 16919.9, "Wetlands & Water Bodies": 1647.9, "Forest & Natural Vegetation": 1854.4, "Agricultural Land": 2346.4, "Bare Land": 109.6, "TOTAL_from": 22878.2}, {"From(2004)\\To(2024)": "Bare Land", "Built-up Areas": 169.2, "Wetlands & Water Bodies": 5.4, "Forest & Natural Vegetation": 9.3, "Agricultural Land": 5.7, "Bare Land": 1.0, "TOTAL_from": 190.6}, {"From(2004)\\To(2024)": "TOTAL_to", "Built-up Areas": 58859.6, "Wetlands & Water Bodies": 3271.0, "Forest & Natural Vegetation": 4322.5, "Agricultural Land": 3638.4, "Bare Land": 188.9, "TOTAL_from": 70280.4}]}, "urban_expansion_summary": [{"Period": "2004\u20132009", "Years": 5, "Built-up Start (ha)": 12478.7, "Built-up End (ha)": 16139.3, "Net Change (ha)": 3660.6, "Change (%)": 29.34, "Annual Rate (ha/yr)": 732.12}, {"Period": "2009\u20132014", "Years": 5, "Built-up Start (ha)": 16139.3, "Built-up End (ha)": 22216.0, "Net Change (ha)": 6076.7, "Change (%)": 37.65, "Annual Rate (ha/yr)": 1215.34}, {"Period": "2014\u20132019", "Years": 5, "Built-up Start (ha)": 22216.0, "Built-up End (ha)": 25642.7, "Net Change (ha)": 3426.7, "Change (%)": 15.42, "Annual Rate (ha/yr)": 685.34}, {"Period": "2019\u20132024", "Years": 5, "Built-up Start (ha)": 25642.7, "Built-up End (ha)": 29612.0, "Net Change (ha)": 3969.3, "Change (%)": 15.48, "Annual Rate (ha/yr)": 793.86}, {"Period": "2004\u20132024", "Years": 20, "Built-up Start (ha)": 12478.7, "Built-up End (ha)": 29612.0, "Net Change (ha)": 17133.3, "Change (%)": 137.3, "Annual Rate (ha/yr)": 856.67}], "agricultural_loss_summary": [{"Period": "2004\u20132009", "Years": 5, "Agricultural Start (ha)": 30987.0, "Agricultural End (ha)": 28241.0, "Land Lost (ha)": 2746.0, "Loss (%)": 8.86, "Annual Loss (ha/yr)": 549.2}, {"Period": "2009\u20132014", "Years": 5, "Agricultural Start (ha)": 28241.0, "Agricultural End (ha)": 25483.0, "Land Lost (ha)": 2758.0, "Loss (%)": 9.77, "Annual Loss (ha/yr)": 551.6}, {"Period": "2014\u20132019", "Years": 5, "Agricultural Start (ha)": 25483.0, "Agricultural End (ha)": 23172.0, "Land Lost (ha)": 2311.0, "Loss (%)": 9.07, "Annual Loss (ha/yr)": 462.2}, {"Period": "2019\u20132024", "Years": 5, "Agricultural Start (ha)": 23172.0, "Agricultural End (ha)": 21083.0, "Land Lost (ha)": 2089.0, "Loss (%)": 9.01, "Annual Loss (ha/yr)": 417.8}, {"Period": "2004\u20132024", "Years": 20, "Agricultural Start (ha)": 30987.0, "Agricultural End (ha)": 21083.0, "Land Lost (ha)": 9904.0, "Loss (%)": 31.96, "Annual Loss (ha/yr)": 495.2}], "lulc_area_statistics": [{"Year": 2004, "Built-up Areas": 12478.7, "Wetlands & Water Bodies": 4802.2, "Forest & Natural Vegetation": 21894.3, "Agricultural Land": 30987.0, "Bare Land": 2824.0}, {"Year": 2009, "Built-up Areas": 16139.3, "Wetlands & Water Bodies": 6944.4, "Forest & Natural Vegetation": 18302.9, "Agricultural Land": 28241.0, "Bare Land": 3359.0}, {"Year": 2014, "Built-up Areas": 22216.0, "Wetlands & Water Bodies": 5170.6, "Forest & Natural Vegetation": 11815.4, "Agricultural Land": 25483.0, "Bare Land": 8301.0}, {"Year": 2019, "Built-up Areas": 25642.7, "Wetlands & Water Bodies": 4092.9, "Forest & Natural Vegetation": 13066.9, "Agricultural Land": 23172.0, "Bare Land": 7011.0}, {"Year": 2024, "Built-up Areas": 29612.0, "Wetlands & Water Bodies": 4018.9, "Forest & Natural Vegetation": 9714.5, "Agricultural Land": 21083.0, "Bare Land": 8558.0}], "predicted_areas_2035": [{"Class": "Built-up Areas", "2024 (ha)": 60123.5, "2035 (ha)": 67963.5, "Change (ha)": 7840.0, "Change (%)": 13.0}, {"Class": "Wetlands & Water Bodies", "2024 (ha)": 3342.2, "2035 (ha)": 2373.8, "Change (ha)": -968.4, "Change (%)": -29.0}, {"Class": "Forest & Natural Vegetation", "2024 (ha)": 4482.8, "2035 (ha)": 1178.1, "Change (ha)": -3304.7, "Change (%)": -73.7}, {"Class": "Agricultural Land", "2024 (ha)": 3777.5, "2035 (ha)": 383.2, "Change (ha)": -3394.3, "Change (%)": -89.9}, {"Class": "Bare Land", "2024 (ha)": 191.8, "2035 (ha)": 19.0, "Change (ha)": -172.8, "Change (%)": -90.1}], "full_trend_2004_2035": [{"Class": "Built-up Areas", "2004": 12478.7, "2009": 16139.3, "2014": 22216.0, "2019": 25642.7, "2024": 29612.0, "2035": 67963.5}, {"Class": "Wetlands & Water Bodies", "2004": 4802.2, "2009": 6944.4, "2014": 5170.6, "2019": 4092.9, "2024": 4018.9, "2035": 2373.8}, {"Class": "Forest & Natural Vegetation", "2004": 21894.3, "2009": 18302.9, "2014": 11815.4, "2019": 13066.9, "2024": 9714.5, "2035": 1178.1}, {"Class": "Agricultural Land", "2004": 30987.0, "2009": 28241.0, "2014": 25483.0, "2019": 23172.0, "2024": 21083.0, "2035": 383.2}, {"Class": "Bare Land", "2004": 2824.0, "2009": 3359.0, "2014": 8301.0, "2019": 7011.0, "2024": 8558.0, "2035": 19.0}], "hotspot_summary": [{"Hotspot_Level": "Low", "Area_ha": 28769.1}, {"Hotspot_Level": "Medium", "Area_ha": 14384.5}, {"Hotspot_Level": "High", "Area_ha": 8630.6}, {"Hotspot_Level": "Very High", "Area_ha": 5753.9}], "hotspot_by_zone": [{"Zone": "Central Zone (0–3km)", "Agric. 2004 (ha)": 78.7, "Agric. 2024 (ha)": 2.3, "Converted (ha)": 63.5, "Conversion Rate (%)": 80.6, "Hotspot Level": "High"}, {"Zone": "Inner Peri-urban (3–7km)", "Agric. 2004 (ha)": 2305.8, "Agric. 2024 (ha)": 260.8, "Converted (ha)": 1985.8, "Conversion Rate (%)": 86.1, "Hotspot Level": "High"}, {"Zone": "Outer Peri-urban (7–12km)", "Agric. 2004 (ha)": 10573.1, "Agric. 2024 (ha)": 1427.5, "Converted (ha)": 7899.8, "Conversion Rate (%)": 74.7, "Hotspot Level": "High"}, {"Zone": "Rural Fringe (12–20km)", "Agric. 2004 (ha)": 9918.3, "Agric. 2024 (ha)": 2084.5, "Converted (ha)": 6969.7, "Conversion Rate (%)": 70.3, "Hotspot Level": "High"}, {"Zone": "Peripheral Zone (>20km)", "Agric. 2004 (ha)": 2.3, "Agric. 2024 (ha)": 2.2, "Converted (ha)": 1.2, "Conversion Rate (%)": 51.7, "Hotspot Level": "High"}], "conversion_by_roads": [{"Distance Zone": "0–500m", "Agricultural Area (ha)": 18712.4, "Converted to Urban (ha)": 14231.5, "Conversion Rate (%)": 76.1}, {"Distance Zone": "500–1,000m", "Agricultural Area (ha)": 3661.3, "Converted to Urban (ha)": 2439.7, "Conversion Rate (%)": 66.6}, {"Distance Zone": "1,000–2,000m", "Agricultural Area (ha)": 497.5, "Converted to Urban (ha)": 248.0, "Conversion Rate (%)": 49.8}, {"Distance Zone": "2,000–5,000m", "Agricultural Area (ha)": 7.0, "Converted to Urban (ha)": 0.6, "Conversion Rate (%)": 9.1}, {"Distance Zone": ">5,000m", "Agricultural Area (ha)": 0.0, "Converted to Urban (ha)": 0.0, "Conversion Rate (%)": 0.0}], "conversion_by_center": [{"Distance Zone": "0–3km", "Agricultural Area (ha)": 78.7, "Converted to Urban (ha)": 63.5, "Conversion Rate (%)": 80.6}, {"Distance Zone": "3–7km", "Agricultural Area (ha)": 2305.8, "Converted to Urban (ha)": 1985.8, "Conversion Rate (%)": 86.1}, {"Distance Zone": "7–12km", "Agricultural Area (ha)": 10573.1, "Converted to Urban (ha)": 7899.8, "Conversion Rate (%)": 74.7}, {"Distance Zone": "12–20km", "Agricultural Area (ha)": 9918.3, "Converted to Urban (ha)": 6969.7, "Conversion Rate (%)": 70.3}, {"Distance Zone": ">20km", "Agricultural Area (ha)": 2.3, "Converted to Urban (ha)": 1.2, "Conversion Rate (%)": 51.7}], "feature_importance": [{"Rank": 1, "Driving Factor": "Population Density", "Importance (%)": 16.89}, {"Rank": 2, "Driving Factor": "Elevation", "Importance (%)": 11.53}, {"Rank": 3, "Driving Factor": "Distance to Economic Center", "Importance (%)": 7.93}, {"Rank": 4, "Driving Factor": "Slope", "Importance (%)": 6.94}, {"Rank": 4, "Driving Factor": "Distance to Center", "Importance (%)": 6.91}, {"Rank": 6, "Driving Factor": "Distance to Health Facilities", "Importance (%)": 6.11}, {"Rank": 7, "Driving Factor": "Distance to Protected Area", "Importance (%)": 4.99}, {"Rank": 8, "Driving Factor": "Distance to Schools", "Importance (%)": 4.97}, {"Rank": 9, "Driving Factor": "Distance to Roads", "Importance (%)": 4.57}], "vif": {"factors": ["Elevation", "Distance to Urban Center", "Distance to Health", "Distance to Schools", "Distance to Economic Zone", "Slope", "Population Density", "Distance to Protected", "Distance to Roads"], "values": [37.104, 18.462, 7.408, 6.001, 5.506, 4.506, 3.850, 3.794, 3.342]}};
+
+const LULC_COLORS = {
+  "Built-up Areas": "#E60000",
+  "Wetlands & Water Bodies": "#9EBBD7",
+  "Forest & Natural Vegetation": "#267300",
+  "Agricultural Land": "#FBF65D",
+  "Bare Land": "#D2CDC0"
+};
+const PLOTLY_FONT = {family:"Inter, Arial, sans-serif", color:"#334155", size:12.5};
+const BASE_LAYOUT = {
+  font: PLOTLY_FONT, margin:{t:20,r:20,b:50,l:55}, paper_bgcolor:"rgba(0,0,0,0)",
+  plot_bgcolor:"rgba(0,0,0,0)", legend:{orientation:"h", y:-0.18}
+};
+const CONFIG = {displayModeBar:false, responsive:true};
+
+function animateNumber(el, target, suffix, decimals){
+  let start = 0; const dur = 1400; const t0 = performance.now();
+  function tick(t){
+    const p = Math.min(1, (t - t0)/dur);
+    const eased = 1 - Math.pow(1-p, 3);
+    const val = start + (target-start)*eased;
+    el.textContent = val.toFixed(decimals) + suffix;
+    if(p<1) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+
+function buildKPIs(){
+  const acc = STATS.accuracy_summary;
+  const avgAcc = acc.reduce((s,r)=>s+r["Overall Accuracy (%)"],0)/acc.length;
+  const area = {}; STATS.area_by_year.forEach(r=>{area[r["class"]]=r;});
+  const builtup2004 = area["Built-up Areas"]["2004"], builtup2024 = area["Built-up Areas"]["2024"];
+  const builtupGrowth = ((builtup2024-builtup2004)/builtup2004)*100;
+  const agri2004 = area["Agricultural Land"]["2004"], agri2024 = area["Agricultural Land"]["2024"];
+  const agriChangePct = ((agri2024-agri2004)/agri2004)*100;
+  const pred = {}; STATS.predicted_areas_2035.forEach(r=>{pred[r["Class"]]=r;});
+  const builtup2035pct = pred["Built-up Areas"]["Change (%)"];
+
+  const kpis = [
+    {label:"Avg. Classification Accuracy", value:avgAcc, suffix:"%", decimals:1, sub:"2004–2024, all years"},
+    {label:"Built-up Area Growth", value:builtupGrowth, suffix:"%", decimals:1, sub:"2004 → 2024"},
+    {label:"Agricultural Land Change", value:agriChangePct, suffix:"%", decimals:1, sub:"2004 → 2024"},
+    {label:"Projected Built-up Growth", value:builtup2035pct, suffix:"%", decimals:1, sub:"2024 → 2035 (CA-Markov)"}
+  ];
+  const row = document.getElementById("kpi-row");
+  kpis.forEach(k=>{
+    const div = document.createElement("div"); div.className="kpi";
+    div.innerHTML = `<div class="label">${k.label}</div><div class="value">0${k.suffix}</div><div class="sub">${k.sub}</div>`;
+    row.appendChild(div);
+    animateNumber(div.querySelector(".value"), k.value, k.suffix, k.decimals);
+  });
+}
+
+function buildAccuracyChart(){
+  const acc = STATS.accuracy_summary;
+  const years = acc.map(r=>r.Year);
+  Plotly.newPlot("chart-accuracy", [
+    {x:years, y:acc.map(r=>r["Overall Accuracy (%)"]), type:"bar", name:"Overall Accuracy (%)",
+     marker:{color:"#2E6FBE"}, yaxis:"y"},
+    {x:years, y:acc.map(r=>r["Kappa"]*100), type:"scatter", mode:"lines+markers", name:"Kappa × 100",
+     line:{color:"#E60000", width:3}, marker:{size:8}}
+  ], {...BASE_LAYOUT, yaxis:{title:"Percent / Kappa×100", range:[0,105]}, xaxis:{title:"Year"}}, CONFIG);
+}
+
+function buildTrendsChart(){
+  const rows = STATS.full_trend_2004_2035;
+  const years = ["2004","2009","2014","2019","2024","2035"];
+  const traces = rows.map(r=>{
+    const color = LULC_COLORS[r.Class] || "#888";
+    const y = years.map(y=>r[y]);
+    return {
+      x:years, y:y, name:r.Class, mode:"lines+markers",
+      line:{color:color, width:3, shape:"spline"},
+      marker:{size:7}
+    };
+  });
+  Plotly.newPlot("chart-trends", traces, {...BASE_LAYOUT, yaxis:{title:"Area (hectares)"}, xaxis:{title:"Year"},
+    shapes:[{type:"line", x0:"2024", x1:"2024", y0:0, y1:1, yref:"paper",
+             line:{color:"#cbd5e1", width:1, dash:"dot"}}],
+    annotations:[{x:"2024", y:1.05, yref:"paper", text:"observed → projected", showarrow:false,
+                  font:{size:11, color:"#94a3b8"}}]
+  }, CONFIG);
+}
+
+function buildPeriodCharts(){
+  const u = STATS.urban_expansion_summary.filter(r=>r.Period!=="2004–2024");
+  Plotly.newPlot("chart-urban-period", [{
+    x:u.map(r=>r.Period), y:u.map(r=>r["Net Change (ha)"]), type:"bar",
+    marker:{color:u.map(r=>r["Net Change (ha)"]>=0 ? "#E60000":"#94a3b8")},
+    text:u.map(r=>r["Change (%)"]+"%"), textposition:"outside"
+  }], {...BASE_LAYOUT, title:{text:"Built-up Area, Net Change (ha)", font:{size:13.5}}, yaxis:{title:"ha"}}, CONFIG);
+
+  const a = STATS.agricultural_loss_summary.filter(r=>r.Period!=="2004–2024");
+  Plotly.newPlot("chart-agri-period", [{
+    x:a.map(r=>r.Period), y:a.map(r=>r["Land Lost (ha)"]), type:"bar",
+    marker:{color:a.map(r=>r["Land Lost (ha)"]>=0 ? "#E6C200":"#94a3b8")},
+    text:a.map(r=>r["Loss (%)"]+"%"), textposition:"outside"
+  }], {...BASE_LAYOUT, title:{text:"Agricultural Land Lost (ha)", font:{size:13.5}}, yaxis:{title:"ha"}}, CONFIG);
+}
+
+function buildTransitionHeatmap(){
+  const rows = STATS.transition_matrices["2004_2024"];
+  const classCol = Object.keys(rows[0])[0];
+  const classes = rows.map(r=>r[classCol]);
+  const cols = Object.keys(rows[0]).filter(k=>k!==classCol);
+  const z = rows.map(r=>cols.map(c=>r[c]));
+  Plotly.newPlot("chart-transition", [{
+    z:z, x:cols, y:classes, type:"heatmap", colorscale:"YlOrRd",
+    hovertemplate:"%{y} → %{x}: %{z:,.1f} ha<extra></extra>",
+    colorbar:{title:"ha"}
+  }], {...BASE_LAYOUT, margin:{t:20,r:20,b:100,l:170}, xaxis:{tickangle:-35}}, CONFIG);
+}
+
+function buildHotspotChart(){
+  const h = STATS.hotspot_summary;
+  const colors = {"Low":"#FFEDA0","Medium":"#FEB24C","High":"#F03B20","Very High":"#8B0000"};
+  Plotly.newPlot("chart-hotspot", [{
+    x:h.map(r=>r.Hotspot_Level), y:h.map(r=>r.Area_ha), type:"bar",
+    marker:{color:h.map(r=>colors[r.Hotspot_Level])}
+  }], {...BASE_LAYOUT, yaxis:{title:"Area (ha)"}}, CONFIG);
+
+  const zone = STATS.hotspot_by_zone;
+  let html = '<table class="stat-table"><thead><tr><th>Zone</th><th>Agric. 2004 (ha)</th><th>Agric. 2024 (ha)</th><th>Converted (ha)</th><th>Rate</th></tr></thead><tbody>';
+  zone.forEach(r=>{
+    const badge = r["Conversion Rate (%)"]>=80 ? "high" : (r["Conversion Rate (%)"]>=60 ? "med" : "low");
+    html += `<tr><td>${r.Zone}</td><td>${r["Agric. 2004 (ha)"]}</td><td>${r["Agric. 2024 (ha)"]}</td><td>${r["Converted (ha)"]}</td><td><span class="badge ${badge}">${r["Conversion Rate (%)"]}%</span></td></tr>`;
+  });
+  html += "</tbody></table>";
+  document.getElementById("hotspot-zone-table").innerHTML = html;
+}
+
+function buildDistanceCharts(){
+  const r1 = STATS.conversion_by_roads;
+  Plotly.newPlot("chart-dist-roads", [{
+    x:r1.map(r=>r["Distance Zone"]), y:r1.map(r=>r["Conversion Rate (%)"]), type:"bar",
+    marker:{color:"#2E6FBE"}
+  }], {...BASE_LAYOUT, title:{text:"By Distance from Major Roads", font:{size:13.5}}, yaxis:{title:"Conversion Rate (%)"}}, CONFIG);
+
+  const r2 = STATS.conversion_by_center;
+  Plotly.newPlot("chart-dist-center", [{
+    x:r2.map(r=>r["Distance Zone"]), y:r2.map(r=>r["Conversion Rate (%)"]), type:"bar",
+    marker:{color:"#E60000"}
+  }], {...BASE_LAYOUT, title:{text:"By Distance from Urban Center", font:{size:13.5}}, yaxis:{title:"Conversion Rate (%)"}}, CONFIG);
+}
+
+function build2035Chart(){
+  const p = STATS.predicted_areas_2035;
+  Plotly.newPlot("chart-2035", [
+    {x:p.map(r=>r.Class), y:p.map(r=>r["2024 (ha)"]), name:"2024 (observed)", type:"bar", marker:{color:"#94a3b8"}},
+    {x:p.map(r=>r.Class), y:p.map(r=>r["2035 (ha)"]), name:"2035 (projected)", type:"bar",
+     marker:{color:p.map(r=>LULC_COLORS[r.Class]||"#888")}}
+  ], {...BASE_LAYOUT, barmode:"group", yaxis:{title:"Area (ha)"}}, CONFIG);
+}
+
+function buildDriverCharts(){
+  const fi = STATS.feature_importance.slice().sort((a,b)=>a["Importance (%)"]-b["Importance (%)"]);
+  Plotly.newPlot("chart-importance", [{
+    x:fi.map(r=>r["Importance (%)"]), y:fi.map(r=>r["Driving Factor"]), type:"bar", orientation:"h",
+    marker:{color:"#007300"}
+  }], {...BASE_LAYOUT, xaxis:{title:"Importance (%)"}, margin:{t:20,r:20,b:50,l:170}}, CONFIG);
+
+  const vif = STATS.vif;
+  const vifIdx = vif.values.map((v,i)=>i).sort((a,b)=>vif.values[a]-vif.values[b]);
+  Plotly.newPlot("chart-vif", [{
+    x:vifIdx.map(i=>vif.values[i]), y:vifIdx.map(i=>vif.factors[i]), type:"bar", orientation:"h",
+    marker:{color:vifIdx.map(i=>vif.values[i]>10 ? "#E60000" : "#2E6FBE")},
+    hovertemplate:"%{y}: VIF %{x:.3f}<extra></extra>"
+  }], {...BASE_LAYOUT, xaxis:{title:"VIF (>10 flags multicollinearity)"}, margin:{t:20,r:20,b:50,l:170},
+    shapes:[{type:"line", x0:10, x1:10, y0:0, y1:1, yref:"paper", line:{color:"#94a3b8", width:1, dash:"dot"}}]
+  }, CONFIG);
+}
+
+buildKPIs();
+buildAccuracyChart();
+buildTrendsChart();
+buildPeriodCharts();
+buildTransitionHeatmap();
+buildHotspotChart();
+buildDistanceCharts();
+build2035Chart();
+buildDriverCharts();
+
+const io = new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add("in-view"); io.unobserve(e.target); }});
+},{threshold:0.12});
+document.querySelectorAll("section.card").forEach(s=>io.observe(s));
+</script>
+</body>
+</html>
